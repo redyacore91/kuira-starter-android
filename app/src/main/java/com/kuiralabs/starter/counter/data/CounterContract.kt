@@ -1,6 +1,7 @@
 package com.kuiralabs.starter.counter.data
 
 import android.content.Context
+import com.midnight.kuira.contract.generated.CounterContract as GeneratedCounter
 import com.midnight.kuira.core.compact.ContractCallStage
 import com.midnight.kuira.core.compact.MidnightContract
 import com.midnight.kuira.core.compact.proving.ProvingKeyManager
@@ -19,12 +20,15 @@ import kotlinx.coroutines.flow.map
 // changing the kuiraContract { source } path in build.gradle.kts.
 internal object CounterContract {
 
-    private const val NAME = "counter"
+    // Contract name + asset paths come from the generated facade's constants — ONE source shared
+    // with the plugin's sync, no magic strings.
+    private const val NAME = GeneratedCounter.CONTRACT_ALIAS
     private const val CIRCUIT_INCREMENT = "increment"
     private const val LEDGER_FIELD_COUNT = "count"
 
-    private const val CONTRACT_JS_ASSET = "runtime/$NAME-contract.js"
-    private const val VERIFIER_ASSET = "keys/$CIRCUIT_INCREMENT.verifier"
+    private const val CONTRACT_JS_ASSET = GeneratedCounter.RUNTIME_ASSET
+    private const val KEYS_DIR = GeneratedCounter.KEYS_ASSET_DIR
+    private const val VERIFIER_ASSET = "$KEYS_DIR/$CIRCUIT_INCREMENT.verifier"
 
     private fun loadVerifierKeys(context: Context): Map<String, ByteArray> {
         // The deploy path embeds every circuit's verifier key in the
@@ -40,7 +44,7 @@ internal object CounterContract {
     // keysDir so the local prover finds increment.prover. Idempotent —
     // gated internally on an APK stamp + per-file presence check.
     private fun installProvingKeys(context: Context) {
-        ProvingKeyManager(context).installCircuitKeysFromAssets()
+        ProvingKeyManager(context).installCircuitKeysFromAssets(KEYS_DIR)
     }
 
     private fun buildHandle(
@@ -76,7 +80,7 @@ internal object CounterContract {
     ) {
         installProvingKeys(context)
         val handle = buildHandle(context, sdk, address = address, forWrite = true)
-        handle.call(CIRCUIT_INCREMENT, onProgress = onProgress)
+        GeneratedCounter(handle).increment(onProgress = onProgress)
     }
 
     // Read-only handle: no cpk, no verifier keys. The count stream
