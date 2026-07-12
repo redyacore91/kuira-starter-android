@@ -141,15 +141,22 @@ class CounterViewModel @Inject constructor(
     // address. Building one means opening the contract JS asset stream
     // and normalizing ES module syntax — the count stream + the
     // post-increment read share one handle rather than rebuilding it.
-    // Re-created only when the address changes (deploy on a new network,
-    // restore on a fresh device).
+    // Re-created when the address changes (deploy on a new network, restore on a
+    // fresh device) OR when the shared SDK instance is swapped out. The SDK is
+    // replaced — and the old one CLOSED — on every session re-auth (SessionLock
+    // drops it on device-lock; MidnightSdkProvider republishes on unlock) or
+    // network switch, which tears down the old indexer/node clients. A read
+    // handle bound to a closed SDK yields a dead count stream + failing reads,
+    // so key the cache on the SDK identity too.
     private var readHandle: MidnightContract? = null
     private var readHandleAddress: String? = null
+    private var readHandleSdk: MidnightSdk? = null
 
     private fun readHandleFor(sdk: MidnightSdk, address: String): MidnightContract {
-        if (readHandle == null || readHandleAddress != address) {
+        if (readHandle == null || readHandleAddress != address || readHandleSdk !== sdk) {
             readHandle = CounterContract.buildReadHandle(context, sdk, address)
             readHandleAddress = address
+            readHandleSdk = sdk
         }
         return readHandle!!
     }
