@@ -186,5 +186,6 @@ class CounterViewModel @Inject constructor(
         countJob = null
         readHandle = null
         readHandleAddress = null
+        readHandleSdk = null
     }
 }
